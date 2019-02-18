@@ -1,4 +1,4 @@
-export default {
+const match = {
   objects: [
     {
       rectangle: {
@@ -174,3 +174,6 @@ export default {
     format: 'Jpeg',
   },
 };
+
+export { match };
+

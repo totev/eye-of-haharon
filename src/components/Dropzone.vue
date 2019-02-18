@@ -27,9 +27,15 @@
         id="checkbox"
         v-model="showMatchesOverlay"
       >
-      <label for="checkbox">Show matches: {{showMatchesOverlay}}</label>
+      <label for="checkbox">Show/hide matches</label>
       <br />
-      <span>Match description: {{hoveredMatch}}</span>
+      <div v-if="showMatchesOverlay && hoveredMatch">
+        <span>Match description: {{hoveredMatch.object}}.</span>
+        <span>Confidence: {{hoveredMatch.confidence}}</span>
+      </div>
+      <div v-if="!hoveredMatch">
+        No match clicked. Try clicking on one of those colored recatangles.
+      </div>
     </div>
     <div class="processed-image">
       <canvas
@@ -39,6 +45,7 @@
       <canvas
         id="matches-layer"
         ref="matches-canvas-layer"
+        @click.left="onMetaClick"
         :class="{hidden: !showMatchesOverlay}"
       ></canvas>
     </div>
@@ -46,9 +53,9 @@
   </div>
 </template>
 
-
 <script>
-import azureResult from "./Azure.js";
+import { match } from "@/services/Azure.js";
+import { isInBoundingBox } from "@/services/math.service.js";
 
 const readFile = function(file) {
   return new Promise((resolve, reject) => {
@@ -97,7 +104,7 @@ export default {
       canvasContext: undefined,
       matchesCanvasContext: undefined,
       showMatchesOverlay: true,
-      hoveredMatch:{}
+      hoveredMatch: {}
     };
   },
   mounted() {
@@ -109,6 +116,10 @@ export default {
   methods: {
     uploadImage: () => {
       return undefined;
+    },
+    onMetaClick: function({ layerX, layerY }) {
+      console.debug(`Clicked on: X:${layerX} Y:${layerY}`);
+      this.hoveredMatch = isInBoundingBox(layerX, layerY, match);
     },
     loadFile: async function(file) {
       this.imageData = await readFile(file);
@@ -142,7 +153,8 @@ export default {
     },
 
     highlightFoundArtefacts: function() {
-      const rectangles = azureResult.objects.map(it => it.rectangle);
+      const rectangles = match.objects.map(it => it.rectangle);
+
       this.matchesCanvasContext.strokeStyle = "#3ac7b9";
       rectangles.forEach(rect =>
         this.matchesCanvasContext.strokeRect(rect.x, rect.y, rect.w, rect.h)
