@@ -1,3 +1,4 @@
+[![CircleCI](https://circleci.com/gh/totev/eye-of-haharon.svg?style=svg)](https://circleci.com/gh/totev/eye-of-haharon)
 # eye-of-haharon
 
 ## Project setup
