@@ -1,6 +1,7 @@
-import { isInBoundingBox } from "@/services/math.service.js";
+import { getMatchFromClickOnBoundingBox } from '@/services/math.service.js';
+import { boundingBoxToRect } from '../../src/services/math.service';
 describe('math.service.spec.js', () => {
-  describe('isInBoundingBox', () => {
+  describe('getMatchFromClickOnBoundingBox', () => {
     it('not in bounding box', () => {
       const match = {
         rectangle: {
@@ -20,7 +21,7 @@ describe('math.service.spec.js', () => {
         clickY = 222;
 
       expect(
-        isInBoundingBox(clickX, clickY, { objects: [match] })
+        getMatchFromClickOnBoundingBox(clickX, clickY, { objects: [match] })
       ).toBeUndefined();
     });
 
@@ -43,8 +44,30 @@ describe('math.service.spec.js', () => {
         clickY = 40;
 
       expect(
-        isInBoundingBox(clickX, clickY, { objects: [match] })
+        getMatchFromClickOnBoundingBox(clickX, clickY, { objects: [match] })
       ).toEqual(match);
+    });
+  });
+
+  describe('boundingBoxToRect', () => {
+    it('can transform from bounding box to a rectangle', () => {
+      const bBox = {
+        Height: 0.2930403,
+        Left: 0.3922065,
+        Top: 0.15567766,
+        Width: 0.284666,
+      };
+
+      const expected = {
+        x: 238,
+        y: 92,
+        w: 173,
+        h: 172,
+      };
+
+      expect(boundingBoxToRect({ width: 608, height: 588 }, bBox)).toEqual(
+        expected
+      );
     });
   });
 });

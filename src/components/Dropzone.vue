@@ -21,7 +21,7 @@
       </div>
     </div>
     <p> &nbsp;</p>
-    <div v-if="imageData">
+    <div v-if="image">
       <input
         type="checkbox"
         id="checkbox"
@@ -54,64 +54,48 @@
 </template>
 
 <script>
-import { match } from "@/services/Azure.js";
-import { isInBoundingBox } from "@/services/math.service.js";
-
-const readFile = function(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      resolve(reader.result);
-    };
-    reader.onerror = ({ ev }) => {
-      reject(ev);
-    };
-    reader.readAsDataURL(file);
-  });
-};
-
-const loadImage = function(imageData) {
-  return new Promise(resolve => {
-    const img = new Image();
-    img.addEventListener("load", () => resolve(img), false);
-    img.src = imageData;
-  });
-};
-
-const calculateScaleDimensions = function(img, maxWidth, maxHeight) {
-  const scaled = {
-    ratio: img.width / img.height,
-    width: img.width,
-    height: img.height
-  };
-  if (scaled.width > maxWidth) {
-    scaled.width = maxWidth;
-    scaled.height = scaled.width / scaled.ratio;
-  }
-  if (scaled.height > maxHeight) {
-    scaled.height = maxHeight;
-    scaled.width = scaled.height / scaled.ratio;
-  }
-  return scaled;
-};
+import {
+  loadResultForService,
+  transformMatchesToRectangles
+} from "@/services/provider.service.js";
+import {
+  getMatchFromClickOnBoundingBox,
+  calculateScaleDimensions
+} from "@/services/math.service.js";
+import { loadImage, readFile } from "@/services/helper.service.js";
 
 export default {
+  props: {
+    provider: {
+      type: String,
+      default: ""
+    }
+  },
   data() {
     return {
-      imageData: undefined,
+      image: undefined,
       isInitial: true,
       isUploading: undefined,
       canvasContext: undefined,
       matchesCanvasContext: undefined,
+      matchesCanvas: undefined,
       showMatchesOverlay: true,
-      hoveredMatch: {}
+      hoveredMatch: {},
+      remoteServiceResults: []
     };
   },
   mounted() {
     this.canvasContext = this.$refs["processed-canvas"].getContext("2d");
-    this.matchesCanvasContext = this.$refs["matches-canvas-layer"].getContext(
-      "2d"
-    );
+    this.matchesCanvas = this.$refs["matches-canvas-layer"];
+    this.matchesCanvasContext = this.matchesCanvas.getContext("2d");
+  },
+  watch: {
+    provider: {
+      immediate: true,
+      handler(val) {
+        this.highlightFoundArtefacts(this.image);
+      }
+    }
   },
   methods: {
     uploadImage: () => {
@@ -119,13 +103,9 @@ export default {
     },
     onMetaClick: function({ layerX, layerY }) {
       console.debug(`Clicked on: X:${layerX} Y:${layerY}`);
-      this.hoveredMatch = isInBoundingBox(layerX, layerY, match);
+      this.hoveredMatch = getMatchFromClickOnBoundingBox(layerX, layerY, match);
     },
-    loadFile: async function(file) {
-      this.imageData = await readFile(file);
-    },
-    initCanvas: async function() {
-      const image = await loadImage(this.imageData);
+    initCanvas: function(image) {
       const canvas = this.canvasContext.canvas;
       const scaled = calculateScaleDimensions(
         image,
@@ -147,13 +127,25 @@ export default {
       if (!fileList.length) return;
 
       const file = fileList[0];
-      await this.loadFile(file);
-      await this.initCanvas();
-      this.highlightFoundArtefacts();
+      const fileData = await readFile(file);
+      this.image = await loadImage(fileData);
+
+      this.initCanvas(this.image);
+      this.highlightFoundArtefacts(this.image);
     },
 
-    highlightFoundArtefacts: function() {
-      const rectangles = match.objects.map(it => it.rectangle);
+    highlightFoundArtefacts: function(image) {
+      console.debug("highlightFoundArtefacts provider", this.provider);
+
+      const rectangles = transformMatchesToRectangles(this.provider, image);
+
+      // clear canvas prior to drawing
+      this.matchesCanvasContext.clearRect(
+        0,
+        0,
+        this.matchesCanvas.width,
+        this.matchesCanvas.height
+      );
 
       this.matchesCanvasContext.strokeStyle = "#3ac7b9";
       rectangles.forEach(rect =>

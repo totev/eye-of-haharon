@@ -1,7 +1,7 @@
 <template>
   <div id="app">
-    <provider />
-    <dropzone />
+    <provider @providerChanged="selectedProvider=$event"/>
+    <dropzone :provider="selectedProvider"/>
   </div>
 </template>
 
@@ -14,7 +14,12 @@ export default {
   components: {
     Dropzone,
     Provider
-  }
+  },
+  data() {
+    return {
+      selectedProvider: null
+    }
+  },
 }
 </script>
 
