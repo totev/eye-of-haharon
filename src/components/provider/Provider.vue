@@ -1,17 +1,13 @@
 <template>
-  <div>
-    Provider
-    <select @change="triggerProviderChange">
-      <option value="">Please select a provider</option>
-      <option
-        v-for="provider in providers"
-        :key="provider.id"
-        v-bind:value="provider.name"
-      >
-        {{provider.name}}
-      </option>
-    </select>
-  </div>
+  <v-flex>
+    <v-select
+      :items="providers"
+      label="Provider"
+      item-text="name"
+      solo
+      @change="triggerProviderChange"
+    ></v-select>
+  </v-flex>
 </template>
 
 <script>
@@ -23,8 +19,8 @@ export default {
     };
   },
   methods: {
-    triggerProviderChange($event) {
-      this.$emit("providerChanged", $event.target.value);
+    triggerProviderChange(provider) {
+      this.$emit("providerChanged", provider);
     }
   }
 };
