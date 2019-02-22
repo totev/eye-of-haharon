@@ -1,19 +1,43 @@
-import { awsResponse } from '@/services/AWSRekognition.js';
-import { match as azureResponse } from '@/services/Azure.js';
+import client from 'api-client';
 import flatMap from 'lodash/fp/flatMap';
 import flow from 'lodash/fp/flow';
 import get from 'lodash/fp/get';
 import map from 'lodash/fp/map';
+import { GenericProvider } from '../components/provider/GenericProvider';
 import { boundingBoxToRect } from './math.service';
 
-const loadResultForService = serviceName => {
+const allProviders = () => {
+  const azure = new GenericProvider(
+    'https://westeurope.api.cognitive.microsoft.com/vision/v2.0/detect',
+    {
+      type: 'Header',
+      title: 'Ocp-Apim-Subscription-Key',
+      label: 'Subscription key',
+    },
+    'azure',
+    'Azure cognitive vision'
+  );
+  const aws = new GenericProvider(
+    'https://westeurope.api.cognitive.microsoft.com/vision/v2.0/detect',
+    {
+      type: 'Header',
+      title: 'Ocp-Apim-Subscription-Key',
+      label: 'Subscription key',
+    },
+    'aws',
+    'AWS Rekognition'
+  );
+  return [azure, aws];
+};
+
+const loadResultForService = async function(serviceName) {
   let response;
   switch (serviceName) {
     case 'aws':
-      response = awsResponse;
+      response = client.fetchAWS();
       break;
     case 'azure':
-      response = azureResponse;
+      response = client.fetchAzure();
       break;
     default:
       break;
@@ -38,8 +62,12 @@ const transformAWSMatchesToRectangles = (image, matches) => {
   )(matches);
 };
 
-const transformMatchesToRectangles = (serviceSource, image, matches) => {
-  matches = matches || loadResultForService(serviceSource);
+const transformMatchesToRectangles = async function(
+  serviceSource,
+  image,
+  matches
+) {
+  matches = matches || (await loadResultForService(serviceSource));
 
   let response = [];
   switch (serviceSource) {
@@ -55,5 +83,5 @@ const transformMatchesToRectangles = (serviceSource, image, matches) => {
   return response;
 };
 
-export { loadResultForService, transformMatchesToRectangles, transformAWSMatchesToRectangles, transformAzureMatchesToRectangles, };
+export { loadResultForService, transformMatchesToRectangles, transformAWSMatchesToRectangles, transformAzureMatchesToRectangles, allProviders, };
 

@@ -1,50 +1,35 @@
 <template>
-  <div>
-    <div class="container">
-      <h1>Upload images</h1>
-      <div class="dropbox">
-        <input
-          type="file"
-          name="imageUpload"
-          multiple="false"
-          :disabled="isUploading"
-          v-on:change.prevent="filesChange($event.target.name, $event.target.files);"
-          accept="image/*"
-          class="input-file"
-        >
-        <p v-if="isInitial">
-          Drag your file here to begin<br> or click to browse
-        </p>
-        <p v-if="isUploading">
-          Uploading your image...
-        </p>
-      </div>
+  <div class="container">
+    <h1>Upload images</h1>
+    <div class="dropbox">
+      <input
+        type="file"
+        name="imageUpload"
+        multiple="false"
+        :disabled="isUploading"
+        v-on:change.prevent="filesChange($event.target.name, $event.target.files);"
+        accept="image/*"
+        class="input-file"
+      >
+      <p v-if="isInitial">
+        Drag your file here to begin<br> or click to browse
+      </p>
+      <p v-if="isUploading">
+        Uploading your image...
+      </p>
     </div>
-    <image-preview :image="image" :provider="provider" v-if="image"/>
   </div>
 </template>
 
 <script>
 import { loadImage, readFile } from "@/services/helper.service.js";
-import ImagePreview from "./ImagePreview.vue";
 
 export default {
-  props: {
-    provider: {
-      type: String,
-      default: ""
-    }
-  },
   data() {
     return {
-      image: undefined,
       isInitial: true,
-      isUploading: undefined,
-      remoteServiceResults: []
+      isUploading: undefined
     };
-  },
-  components: {
-    ImagePreview
   },
   methods: {
     async filesChange(fieldName, fileList) {
@@ -53,7 +38,8 @@ export default {
 
       const file = fileList[0];
       const fileData = await readFile(file);
-      this.image = await loadImage(fileData);
+      const image = await loadImage(fileData);
+      this.$emit("imageAdded", image);
     }
   }
 };

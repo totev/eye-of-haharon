@@ -1,18 +1,5 @@
 <template>
   <v-card>
-    <div class="processed-image">
-      <canvas
-        id="background-layer"
-        ref="processed-canvas"
-      ></canvas>
-      <canvas
-        id="matches-layer"
-        ref="matches-canvas-layer"
-        @click.left="onMetaClick"
-        :class="{hidden: !showMatchesOverlay}"
-      ></canvas>
-    </div>
-
     <v-card-title primary-title>
       <div>
         <h3 class="headline mb-0">Image preview {{provider}}</h3>
@@ -21,35 +8,34 @@
     </v-card-title>
 
     <v-card-text>
-      <div>
-        <input
-          type="checkbox"
-          id="checkbox"
-          v-model="showMatchesOverlay"
-        >
-        <label for="checkbox">Show/hide matches</label>
-        <br />
-        <div v-if="showMatchesOverlay && hoveredMatch">
-          <span>Match description: {{hoveredMatch.object}}.</span>
-          <span>Confidence: {{hoveredMatch.confidence}}</span>
-        </div>
-        <div v-if="!hoveredMatch">
-          No match clicked. Try clicking on one of those colored recatangles.
-        </div>
+      <div class="source-service">Results from Azure Computer Vision API - v2.0</div>
+      <div class="canvas-wrapper">
+        <canvas
+          id="background-layer"
+          ref="processed-canvas"
+        ></canvas>
+        <canvas
+          id="matches-layer"
+          ref="matches-canvas-layer"
+          @click.left="onMetaClick"
+          :class="{hidden: !showMatchesOverlay}"
+        ></canvas>
       </div>
 
-      <div class="source-service">Results from Azure Computer Vision API - v2.0</div>
+      <div v-if="showMatchesOverlay && hoveredMatch">
+        <span>Match description: {{hoveredMatch.object}}.</span>
+        <span>Confidence: {{hoveredMatch.confidence}}</span>
+      </div>
+      <div v-if="!hoveredMatch">
+        No match clicked. Try clicking on one of those colored recatangles.
+      </div>
     </v-card-text>
 
-    <v-card-actions>
-      <v-btn
-        flat
-        color="orange"
-      >Share</v-btn>
-      <v-btn
-        flat
-        color="orange"
-      >Explore</v-btn>
+    <v-card-actions end>
+      <v-switch
+        v-model="showMatchesOverlay"
+        label="Show/hide matches"
+      ></v-switch>
     </v-card-actions>
   </v-card>
 </template>
@@ -129,8 +115,11 @@ export default {
         backgroundImageCanvasContext.canvas.height
       );
     },
-    highlightFoundArtefacts: function(image) {
-      const rectangles = transformMatchesToRectangles(this.provider, image);
+    highlightFoundArtefacts: async function(image) {
+      const rectangles = await transformMatchesToRectangles(
+        this.provider,
+        image
+      );
       const matchesCanvasContext = this.matchesCanvas.getContext("2d");
       const matchesCanvasContextCanvase = matchesCanvasContext.canvas;
 
@@ -152,14 +141,13 @@ export default {
 </script>
 
 <style lang="css" scoped>
-.processed-image {
-  position: relative;
+.canvas-wrapper {
+  display: grid;
 }
 
-canvas {
-  position: absolute;
-  left: 0;
-  top: 0;
+.canvas-wrapper canvas {
+  grid-column: 1;
+  grid-row: 1;
 }
 #matches-layer {
   z-index: 2;
