@@ -2,29 +2,28 @@
   <v-card>
     <v-card-title primary-title>
       <div>
-        <h3 class="headline mb-0">Image preview {{provider}}</h3>
-        <div> Image details </div>
+        <h3 class="headline mb-0">Image preview {{ provider }}</h3>
+        <div>Image details</div>
       </div>
     </v-card-title>
 
-    <v-card-text>
-      <div class="source-service">Results from Azure Computer Vision API - v2.0</div>
-      <div class="canvas-wrapper">
-        <canvas
-          id="background-layer"
-          ref="processed-canvas"
-        ></canvas>
+    <v-card-text class="proccesed-image-card" ref="proccesed-image-card">
+      <div class="source-service">
+        Results from Azure Computer Vision API - v2.0
+      </div>
+      <div class="canvas-wrapper" v-resize="debouncedResize()">
+        <canvas id="background-layer" ref="processed-canvas"></canvas>
         <canvas
           id="matches-layer"
           ref="matches-canvas-layer"
           @click.left="onMetaClick"
-          :class="{hidden: !showMatchesOverlay}"
+          :class="{ hidden: !showMatchesOverlay }"
         ></canvas>
       </div>
 
       <div v-if="showMatchesOverlay && hoveredMatch">
-        <span>Match description: {{hoveredMatch.object}}.</span>
-        <span>Confidence: {{hoveredMatch.confidence}}</span>
+        <span>Match description: {{ hoveredMatch.object }}.</span>
+        <span>Confidence: {{ hoveredMatch.confidence }}</span>
       </div>
       <div v-if="!hoveredMatch">
         No match clicked. Try clicking on one of those colored recatangles.
@@ -45,7 +44,12 @@ import {
   getMatchFromClickOnBoundingBox,
   calculateScaleDimensions
 } from "@/services/math.service.js";
-import { transformMatchesToRectangles } from "@/services/provider.service.js";
+import {
+  transformMatchesToRectangles,
+  scaleRectangles
+} from "@/services/provider.service.js";
+import debounce from "lodash/debounce";
+import isEmpty from "lodash/isEmpty";
 
 export default {
   props: {
@@ -62,45 +66,84 @@ export default {
     return {
       matchesCanvas: undefined,
       backgroundImageCanvas: undefined,
+      proccesedImageCard: undefined,
       hoveredMatch: {},
-      showMatchesOverlay: false
+      showMatchesOverlay: false,
+      matchedBBoxes: [],
+      scale: undefined
     };
   },
   watch: {
-    image: {
-      handler() {}
+    scale: {
+      handler() {
+        this.initCanvases();
+      }
     },
     provider: {
       immediate: true,
-      handler() {
-        //this.highlightFoundArtefacts(this.image);
+      async handler() {
+        await this.collectAndRemapMatchesForImageAndProvider();
+        this.highlightFoundArtefacts(this.image);
       }
     }
   },
   mounted() {
     this.backgroundImageCanvas = this.$refs["processed-canvas"];
     this.matchesCanvas = this.$refs["matches-canvas-layer"];
+    this.proccesedImageCard = this.$refs["proccesed-image-card"];
   },
   beforeUpdate() {
     console.log("before update");
-    this.initBackgroundImageCanvas(this.image);
-    this.highlightFoundArtefacts(this.image);
   },
   methods: {
+    initCanvases() {
+      this.clearCanvas(this.matchesCanvas);
+      this.clearCanvas(this.backgroundImageCanvas);
+      this.initBackgroundImageCanvas(this.image, this.scale);
+      if (isEmpty(this.matchedBBoxes) === false) {
+        this.highlightFoundArtefacts(this.image, this.scale);
+      }
+    },
+    resizeCanvases() {
+      try {
+        // consider vuetify's styling -> currently padding: 16px;
+        const stylingOffset = 16;
+        const resizedWidth = Math.abs(
+          this.proccesedImageCard.clientWidth - stylingOffset * 2
+        );
+        const resizedHeight = this.proccesedImageCard.clientHeight;
+
+        // ignore if the new size is bigger than the original image's
+        if (
+          this.image.resizedWidth < resizedWidth ||
+          this.image.resizedHeight < resizedHeight
+        ) {
+          return;
+        }
+
+        this.scale = calculateScaleDimensions(
+          this.image,
+          resizedWidth,
+          resizedHeight
+        );
+      } catch (error) {
+        console.error("Something went wrong while resizing image card", error);
+      }
+    },
+    debouncedResize() {
+      return debounce(this.resizeCanvases, 500);
+    },
     onMetaClick: function({ layerX, layerY }) {
       console.debug(`Clicked on: X:${layerX} Y:${layerY}`);
       this.hoveredMatch = getMatchFromClickOnBoundingBox(layerX, layerY, match);
     },
-    initBackgroundImageCanvas: function(image) {
+    initBackgroundImageCanvas: function(image, scaled) {
       const backgroundImageCanvasContext = this.backgroundImageCanvas.getContext(
         "2d"
       );
       const matchesCanvasContext = this.matchesCanvas.getContext("2d");
-      const scaled = calculateScaleDimensions(
-        image,
-        backgroundImageCanvasContext.canvas.dataMaxWidth,
-        backgroundImageCanvasContext.canvas.dataMaxHeight
-      );
+
+      scaled = scaled || calculateScaleDimensions(image);
       // scale canvases to image size
       backgroundImageCanvasContext.canvas.width = scaled.width;
       backgroundImageCanvasContext.canvas.height = scaled.height;
@@ -115,26 +158,30 @@ export default {
         backgroundImageCanvasContext.canvas.height
       );
     },
-    highlightFoundArtefacts: async function(image) {
-      const rectangles = await transformMatchesToRectangles(
+    async collectAndRemapMatchesForImageAndProvider() {
+      this.matchedBBoxes = await transformMatchesToRectangles(
         this.provider,
-        image
+        this.image
       );
+    },
+    async highlightFoundArtefacts(image, scale) {
+      scale = scale || this.scale;
       const matchesCanvasContext = this.matchesCanvas.getContext("2d");
-      const matchesCanvasContextCanvase = matchesCanvasContext.canvas;
 
       // clear canvas prior to drawing
-      matchesCanvasContext.clearRect(
-        0,
-        0,
-        matchesCanvasContextCanvase.width,
-        matchesCanvasContextCanvase.height
-      );
+      this.clearCanvas(this.matchesCanvas);
+
+      const scaledRects = scaleRectangles(this.matchedBBoxes, scale);
 
       matchesCanvasContext.strokeStyle = "#3ac7b9";
-      rectangles.forEach(rect =>
+      scaledRects.forEach(rect =>
         matchesCanvasContext.strokeRect(rect.x, rect.y, rect.w, rect.h)
       );
+    },
+    clearCanvas(canvas) {
+      if (!canvas) return;
+      const context = canvas.getContext("2d");
+      context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     }
   }
 };

@@ -1,4 +1,4 @@
-import { transformAWSMatchesToRectangles, transformAzureMatchesToRectangles } from '../../src/services/provider.service';
+import { scaleRectangles, transformAWSMatchesToRectangles, transformAzureMatchesToRectangles } from '../../src/services/provider.service';
 
 describe('provider.service', () => {
   describe('transformMatchesToRectangles', () => {
@@ -87,7 +87,7 @@ describe('provider.service', () => {
                   Width: 0.23288841545581818,
                 },
                 Confidence: 89.15740203857422,
-              }
+              },
             ],
             Name: 'Car',
             Parents: [{ Name: 'Transportation' }, { Name: 'Vehicle' }],
@@ -114,6 +114,58 @@ describe('provider.service', () => {
       expect(transformAWSMatchesToRectangles(image, awsMatches)).toEqual(
         expected
       );
+    });
+  });
+
+  describe('scaleRectangles', () => {
+    it('should return the input on faulty scale provided', () => {
+      const expected = [
+        {
+          x: 41,
+          y: 5,
+          w: 46,
+          h: 39,
+        },
+        {
+          x: 132,
+          y: 8,
+          w: 67,
+          h: 45,
+        },
+      ];
+      expect(scaleRectangles(expected, {})).toEqual(expected);
+    });
+
+    it('should be able to scale matches based on a given scale object', () => {
+      const scale = {
+        originalWidth: 1280,
+        originalHeight: 260,
+        width: 820,
+        height: 166.5625,
+      };
+      const given = [
+        {
+          x: 41,
+          y: 5,
+          w: 46,
+          h: 39,
+        },
+        {
+          x: 132,
+          y: 8,
+          w: 67,
+          h: 45,
+        },
+      ];
+      const expected = [
+        { h: 24.984375, w: 29.46875, x: 26.265625, y: 3.203125 },
+        { h: 28.828125, w: 42.921875, x: 84.5625, y: 5.125 },
+      ];
+
+      const results = scaleRectangles(given, scale);
+
+      expect(results).toEqual(expected);
+      expect(results).toEqual(expected);
     });
   });
 });

@@ -1,6 +1,8 @@
 const calculateScaleDimensions = (img, maxWidth, maxHeight) => {
   const scaled = {
     ratio: img.width / img.height,
+    originalWidth: img.width,
+    originalHeight: img.height,
     width: img.width,
     height: img.height,
   };

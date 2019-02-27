@@ -3,6 +3,7 @@ import flatMap from 'lodash/fp/flatMap';
 import flow from 'lodash/fp/flow';
 import get from 'lodash/fp/get';
 import map from 'lodash/fp/map';
+import has from 'lodash/has';
 import { GenericProvider } from '../components/provider/GenericProvider';
 import { boundingBoxToRect } from './math.service';
 
@@ -83,5 +84,20 @@ const transformMatchesToRectangles = async function(
   return response;
 };
 
-export { loadResultForService, transformMatchesToRectangles, transformAWSMatchesToRectangles, transformAzureMatchesToRectangles, allProviders, };
+const scaleRectangles = function(rects, scale) {
+  if (!scale || !has(scale, 'width') || !has(scale, 'height')) return rects;
+  const diffX = scale.originalWidth / scale.width;
+  const diffY = scale.originalHeight / scale.height;
+
+  return rects.map(match => {
+    return {
+      w: match.w / diffX,
+      h: match.h / diffY,
+      x: match.x / diffX,
+      y: match.y / diffY,
+    };
+  });
+};
+
+export { loadResultForService, transformMatchesToRectangles, transformAWSMatchesToRectangles, transformAzureMatchesToRectangles, allProviders, scaleRectangles };
 
