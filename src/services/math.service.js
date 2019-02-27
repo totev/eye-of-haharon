@@ -1,4 +1,4 @@
-const calculateScaleDimensions = (img, maxWidth, maxHeight) => {
+const calculateScaleDimensions = (img, maxWidth) => {
   const scaled = {
     ratio: img.width / img.height,
     originalWidth: img.width,
@@ -10,19 +10,21 @@ const calculateScaleDimensions = (img, maxWidth, maxHeight) => {
     scaled.width = maxWidth;
     scaled.height = scaled.width / scaled.ratio;
   }
+  /* do not scale height, becase a scroll context takes care of consistent vertical size
   if (scaled.height > maxHeight) {
     scaled.height = maxHeight;
     scaled.width = scaled.height / scaled.ratio;
   }
+  */
   return scaled;
 };
 
 const getMatchFromClickOnBoundingBox = (clickX, clickY, matches) => {
-  const lum = matches.objects.find(it => {
+  const lum = matches.find(it => {
     const isInX =
-      it.rectangle.x <= clickX && clickX <= it.rectangle.w + it.rectangle.x;
+      it.x <= clickX && clickX <= it.w + it.x;
     const isInY =
-      it.rectangle.y < clickY && clickY < it.rectangle.h + it.rectangle.y;
+      it.y < clickY && clickY < it.h + it.y;
 
     return isInX && isInY;
   });

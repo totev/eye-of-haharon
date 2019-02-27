@@ -1,51 +1,49 @@
-import { getMatchFromClickOnBoundingBox } from '@/services/math.service.js';
-import { boundingBoxToRect } from '../../src/services/math.service';
+import { boundingBoxToRect, calculateScaleDimensions, getMatchFromClickOnBoundingBox } from '@/services/math.service.js';
 describe('math.service.spec.js', () => {
+  describe('calculateScaleDimensions', () => {
+    it('should calculate scale correctly', () => {
+      const img = { width: 1280, height: 260 };
+      const newWidth = 1105;
+      const newHeight = 203;
+      const result = calculateScaleDimensions(img, newWidth, newHeight);
+
+      expect(result.originalWidth).toBe(img.width);
+      expect(result.originalHeight).toBe(img.height);
+
+      expect(result.width / result.height).toEqual(result.ratio);
+      expect(result.width).toBe(newWidth);
+    });
+  });
+
   describe('getMatchFromClickOnBoundingBox', () => {
     it('not in bounding box', () => {
       const match = {
-        rectangle: {
-          x: 41,
-          y: 5,
-          w: 46,
-          h: 39,
-        },
-        object: 'dormer window',
-        confidence: 0.573,
-        parent: {
-          object: 'window',
-          confidence: 0.61,
-        },
+        x: 41,
+        y: 5,
+        w: 46,
+        h: 39,
       };
       const clickX = 111,
         clickY = 222;
 
       expect(
-        getMatchFromClickOnBoundingBox(clickX, clickY, { objects: [match] })
+        getMatchFromClickOnBoundingBox(clickX, clickY, [match])
       ).toBeUndefined();
     });
 
     it('in bounding box', () => {
       const match = {
-        rectangle: {
-          x: 62,
-          y: 5,
-          w: 46,
-          h: 39,
-        },
-        object: 'dormer window',
-        confidence: 0.573,
-        parent: {
-          object: 'window',
-          confidence: 0.61,
-        },
+        x: 62,
+        y: 5,
+        w: 46,
+        h: 39,
       };
       const clickX = 101,
         clickY = 40;
 
-      expect(
-        getMatchFromClickOnBoundingBox(clickX, clickY, { objects: [match] })
-      ).toEqual(match);
+      expect(getMatchFromClickOnBoundingBox(clickX, clickY, [match])).toEqual(
+        match
+      );
     });
   });
 

@@ -50,6 +50,7 @@ import {
 } from "@/services/provider.service.js";
 import debounce from "lodash/debounce";
 import isEmpty from "lodash/isEmpty";
+import isEqual from "lodash/isEqual";
 
 export default {
   props: {
@@ -113,29 +114,32 @@ export default {
         );
         const resizedHeight = this.proccesedImageCard.clientHeight;
 
-        // ignore if the new size is bigger than the original image's
-        if (
-          this.image.resizedWidth < resizedWidth ||
-          this.image.resizedHeight < resizedHeight
-        ) {
-          return;
-        }
-
-        this.scale = calculateScaleDimensions(
+        const maybeNewScale = calculateScaleDimensions(
           this.image,
           resizedWidth,
           resizedHeight
         );
+
+        // ignore if the new size is bigger than the original image's
+        if (isEqual(maybeNewScale,this.scale) === false)  {
+          console.debug("Image scale detected. Will scale to: ", this.scale);
+          this.scale = maybeNewScale;
+        }
+
       } catch (error) {
         console.error("Something went wrong while resizing image card", error);
       }
     },
     debouncedResize() {
-      return debounce(this.resizeCanvases, 500);
+      return debounce(this.resizeCanvases, 240);
     },
     onMetaClick: function({ layerX, layerY }) {
       console.debug(`Clicked on: X:${layerX} Y:${layerY}`);
-      this.hoveredMatch = getMatchFromClickOnBoundingBox(layerX, layerY, match);
+      this.hoveredMatch = getMatchFromClickOnBoundingBox(
+        layerX,
+        layerY,
+        this.matchedBBoxes
+      );
     },
     initBackgroundImageCanvas: function(image, scaled) {
       const backgroundImageCanvasContext = this.backgroundImageCanvas.getContext(
