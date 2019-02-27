@@ -94,7 +94,7 @@ export default {
     this.proccesedImageCard = this.$refs["proccesed-image-card"];
   },
   beforeUpdate() {
-    console.log("before update");
+    console.debug("before update");
   },
   methods: {
     initCanvases() {
