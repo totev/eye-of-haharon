@@ -69,7 +69,7 @@ export default {
       backgroundImageCanvas: undefined,
       proccesedImageCard: undefined,
       hoveredMatch: {},
-      showMatchesOverlay: false,
+      showMatchesOverlay: true,
       matchedBBoxes: [],
       scale: undefined
     };
