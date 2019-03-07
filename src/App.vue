@@ -8,11 +8,10 @@
     </v-toolbar>
 
     <v-content>
-
       <provider-list />
 
-      <provider @providerChanged="selectedProvider=$event" />
-      <dropzone @imageAdded="addedImage = $event" />
+      <provider @providerChanged="onProviderChanged" />
+      <dropzone @imageAdded="onImageAdded" />
       <v-container grid-list-xl>
         <image-preview
           :image="addedImage"
@@ -24,25 +23,37 @@
   </v-app>
 </template>
 
-<script>
+<script lang="ts">
+import { Component, Vue, Emit } from "vue-property-decorator";
 import Dropzone from "./components/Dropzone.vue";
 import Provider from "./components/provider/Provider.vue";
 import ProviderList from "./components/provider/ProviderList.vue";
 import ImagePreview from "./components/ImagePreview.vue";
 
-export default {
-  name: "App",
+@Component({
   components: {
     Dropzone,
     Provider,
     ProviderList,
     ImagePreview
-  },
-  data() {
-    return {
-      selectedProvider: null,
-      addedImage: null
-    };
   }
-};
+})
+export default class App extends Vue {
+  selectedProvider: string | null;
+  addedImage: ImageData | null;
+
+  constructor() {
+    super();
+    this.selectedProvider=null;
+    this.addedImage = null;
+  }
+
+  onProviderChanged(provider: string) {
+    this.selectedProvider = provider;
+  }
+
+  onImageAdded(newImage: ImageData) {
+    this.addedImage = newImage;
+  }
+}
 </script>

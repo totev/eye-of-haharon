@@ -22,7 +22,7 @@
 </template>
 
 <script>
-import { loadImage, readFile } from "@/services/helper.service.js";
+import { loadImage, readFile } from "@/services/helper.service.ts";
 
 export default {
   data() {

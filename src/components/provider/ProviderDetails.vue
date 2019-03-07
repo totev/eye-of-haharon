@@ -8,7 +8,7 @@
 </template>
 
 <script>
-import GenericProvider from "./GenericProvider.js";
+import { GenericProvider } from '@/components/provider/generic-provider';
 
 export default {
   props: {

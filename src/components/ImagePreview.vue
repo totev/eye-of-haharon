@@ -11,7 +11,7 @@
       <div class="source-service">
         Results from Azure Computer Vision API - v2.0
       </div>
-      <div class="canvas-wrapper" v-resize="debouncedResize()">
+      <div class="canvas-wrapper" v-resize="this.debouncedResize()">
         <canvas id="background-layer" ref="processed-canvas"></canvas>
         <canvas
           id="matches-layer"
@@ -39,156 +39,176 @@
   </v-card>
 </template>
 
-<script>
+<script lang="ts">
+import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 import {
   getMatchFromClickOnBoundingBox,
   calculateScaleDimensions
-} from "@/services/math.service.js";
+} from "@/services/math.service.ts";
 import {
   transformMatchesToRectangles,
-  scaleRectangles
-} from "@/services/provider.service.js";
+  scaleRectangles,
+  collectAndTransformMatchesToRectangles
+} from "@/services/provider.service.ts";
 import debounce from "lodash/debounce";
 import isEmpty from "lodash/isEmpty";
 import isEqual from "lodash/isEqual";
+import { Scale } from "@/components/provider/scale";
+import { Rectangle } from "@/components/provider/shapes/rectangle";
+import { ImageWrapper } from "@/components/provider/shapes/image-wrapper";
+import { CloudProvider } from "@/components/provider/generic-provider";
 
-export default {
-  props: {
-    image: {
-      type: Image,
-      default: null
-    },
-    provider: {
-      type: String,
-      default: ""
+@Component({})
+export default class ImagePreview extends Vue {
+  @Prop({ default: null }) image: ImageData;
+  @Prop() provider: CloudProvider;
+
+  public matchesCanvas!: HTMLCanvasElement;
+  public backgroundImageCanvas!: HTMLCanvasElement;
+  public proccesedImageCard!: HTMLCanvasElement;
+  public hoveredMatch: Rectangle;
+  public showMatchesOverlay = true;
+  public matchedBBoxes: Rectangle[] = [];
+  public scale: Scale = Scale.buildEmpty();
+
+  @Watch("image") onImageChanged() {
+    if (this.image) {
+      this.initCanvases();
     }
-  },
-  data() {
-    return {
-      matchesCanvas: undefined,
-      backgroundImageCanvas: undefined,
-      proccesedImageCard: undefined,
-      hoveredMatch: {},
-      showMatchesOverlay: true,
-      matchedBBoxes: [],
-      scale: undefined
-    };
-  },
-  watch: {
-    scale: {
-      handler() {
-        this.initCanvases();
-      }
-    },
-    provider: {
-      immediate: true,
-      async handler() {
-        await this.collectAndRemapMatchesForImageAndProvider();
-        this.highlightFoundArtefacts(this.image);
-      }
+  }
+
+  @Watch("scale") onScaleChanged() {
+    if (this.image) {
+      this.initCanvases();
     }
-  },
+  }
+
+  @Watch("provider") async onProviderChanged() {
+    if (this.image) {
+      await this.collectAndRemapMatchesForImageAndProvider();
+      this.highlightFoundArtefacts(this.image, this.scale);
+    }
+  }
+
+  constructor() {
+    super();
+    this.hoveredMatch = new Rectangle();
+  }
+
   mounted() {
-    this.backgroundImageCanvas = this.$refs["processed-canvas"];
-    this.matchesCanvas = this.$refs["matches-canvas-layer"];
-    this.proccesedImageCard = this.$refs["proccesed-image-card"];
-  },
-  beforeUpdate() {
-    console.debug("before update");
-  },
-  methods: {
-    initCanvases() {
-      this.clearCanvas(this.matchesCanvas);
-      this.clearCanvas(this.backgroundImageCanvas);
-      this.initBackgroundImageCanvas(this.image, this.scale);
-      if (isEmpty(this.matchedBBoxes) === false) {
-        this.highlightFoundArtefacts(this.image, this.scale);
-      }
-    },
-    resizeCanvases() {
-      try {
-        // consider vuetify's styling -> currently padding: 16px;
-        const stylingOffset = 16;
-        const resizedWidth = Math.abs(
-          this.proccesedImageCard.clientWidth - stylingOffset * 2
-        );
-        const resizedHeight = this.proccesedImageCard.clientHeight;
+    this.backgroundImageCanvas = this.$refs[
+      "processed-canvas"
+    ] as HTMLCanvasElement;
+    this.matchesCanvas = this.$refs[
+      "matches-canvas-layer"
+    ] as HTMLCanvasElement;
+    this.proccesedImageCard = this.$refs[
+      "proccesed-image-card"
+    ] as HTMLCanvasElement;
+  }
 
-        const maybeNewScale = calculateScaleDimensions(
-          this.image,
-          resizedWidth,
-          resizedHeight
-        );
+  initCanvases() {
+    this.clearCanvas(this.matchesCanvas);
+    this.clearCanvas(this.backgroundImageCanvas);
+    this.initBackgroundImageCanvas(this.image, this.scale);
+    if (isEmpty(this.matchedBBoxes) === false) {
+      this.highlightFoundArtefacts(this.image, this.scale);
+    }
+  }
 
-        // ignore if the new size is bigger than the original image's
-        if (isEqual(maybeNewScale,this.scale) === false)  {
-          console.debug("Image scale detected. Will scale to: ", this.scale);
-          this.scale = maybeNewScale;
-        }
-
-      } catch (error) {
-        console.error("Something went wrong while resizing image card", error);
-      }
-    },
-    debouncedResize() {
-      return debounce(this.resizeCanvases, 240);
-    },
-    onMetaClick: function({ layerX, layerY }) {
-      console.debug(`Clicked on: X:${layerX} Y:${layerY}`);
-      this.hoveredMatch = getMatchFromClickOnBoundingBox(
-        layerX,
-        layerY,
-        this.matchedBBoxes
+  resizeCanvases() {
+    try {
+      // consider vuetify's styling -> currently padding: 16px;
+      const stylingOffset = 16;
+      const resizedWidth = Math.abs(
+        this.proccesedImageCard.clientWidth - stylingOffset * 2
       );
-    },
-    initBackgroundImageCanvas: function(image, scaled) {
-      const backgroundImageCanvasContext = this.backgroundImageCanvas.getContext(
-        "2d"
-      );
-      const matchesCanvasContext = this.matchesCanvas.getContext("2d");
+      const resizedHeight = this.proccesedImageCard.clientHeight;
 
-      scaled = scaled || calculateScaleDimensions(image);
+      const maybeNewScale = calculateScaleDimensions(this.image, resizedWidth);
+
+      // ignore if the new size is bigger than the original image's
+      if (isEqual(maybeNewScale, this.scale) === false) {
+        console.debug("Image scale detected. Will scale to: ", maybeNewScale);
+        this.scale = maybeNewScale;
+      }
+    } catch (error) {
+      console.error("Something went wrong while resizing image card", error);
+    }
+  }
+
+  debouncedResize() {
+    return debounce(this.resizeCanvases, 240);
+  }
+
+  onMetaClick({ layerX, layerY }: { layerX: number; layerY: number }) {
+    console.debug(`Clicked on: X:${layerX} Y:${layerY}`);
+    this.hoveredMatch = getMatchFromClickOnBoundingBox(
+      layerX,
+      layerY,
+      this.matchedBBoxes
+    );
+  }
+
+  initBackgroundImageCanvas(image: ImageData, scaled: Scale) {
+    scaled = scaled || calculateScaleDimensions(image);
+    const backgroundImageCanvasContext = this.backgroundImageCanvas.getContext(
+      "2d"
+    );
+
+    if (backgroundImageCanvasContext instanceof CanvasRenderingContext2D) {
       // scale canvases to image size
       backgroundImageCanvasContext.canvas.width = scaled.width;
       backgroundImageCanvasContext.canvas.height = scaled.height;
-      matchesCanvasContext.canvas.width = scaled.width;
-      matchesCanvasContext.canvas.height = scaled.height;
+
       // draw scaled image
       backgroundImageCanvasContext.drawImage(
-        image,
+        <any>image,
         0,
         0,
         backgroundImageCanvasContext.canvas.width,
         backgroundImageCanvasContext.canvas.height
       );
-    },
-    async collectAndRemapMatchesForImageAndProvider() {
-      this.matchedBBoxes = await transformMatchesToRectangles(
-        this.provider,
-        this.image
-      );
-    },
-    async highlightFoundArtefacts(image, scale) {
-      scale = scale || this.scale;
-      const matchesCanvasContext = this.matchesCanvas.getContext("2d");
+    }
 
-      // clear canvas prior to drawing
-      this.clearCanvas(this.matchesCanvas);
+    const matchesCanvasContext = this.matchesCanvas.getContext("2d");
+    if (matchesCanvasContext instanceof CanvasRenderingContext2D) {
+      // scale canvases to image size
+      matchesCanvasContext.canvas.width = scaled.width;
+      matchesCanvasContext.canvas.height = scaled.height;
+    }
+  }
 
-      const scaledRects = scaleRectangles(this.matchedBBoxes, scale);
+  async collectAndRemapMatchesForImageAndProvider() {
+    this.matchedBBoxes = await collectAndTransformMatchesToRectangles(
+      this.provider,
+      this.image
+    );
+  }
 
+  async highlightFoundArtefacts(image: ImageWrapper, scale: Scale) {
+    const matchesCanvasContext = this.matchesCanvas.getContext("2d");
+
+    // clear canvas prior to drawing
+    this.clearCanvas(this.matchesCanvas);
+
+    const scaledRects = scaleRectangles(this.matchedBBoxes, scale);
+
+    if (matchesCanvasContext) {
       matchesCanvasContext.strokeStyle = "#3ac7b9";
       scaledRects.forEach(rect =>
         matchesCanvasContext.strokeRect(rect.x, rect.y, rect.w, rect.h)
       );
-    },
-    clearCanvas(canvas) {
-      if (!canvas) return;
-      const context = canvas.getContext("2d");
-      context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     }
   }
-};
+
+  clearCanvas(canvas: HTMLCanvasElement) {
+    if (!canvas) return;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+  }
+}
 </script>
 
 <style lang="css" scoped>

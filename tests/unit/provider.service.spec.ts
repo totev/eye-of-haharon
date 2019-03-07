@@ -1,4 +1,5 @@
-import { scaleRectangles, transformAWSMatchesToRectangles, transformAzureMatchesToRectangles } from '../../src/services/provider.service';
+import { Scale } from '@/components/provider/scale';
+import { scaleRectangles, transformAWSMatchesToRectangles, transformAzureMatchesToRectangles } from '@/services/provider.service.ts';
 
 describe('provider.service', () => {
   describe('transformMatchesToRectangles', () => {
@@ -95,7 +96,7 @@ describe('provider.service', () => {
         ],
       };
 
-      const image = { width: 1280, height: 260 };
+      const image = new ImageData(1280, 260);
       const expected = [
         {
           x: 665,
@@ -112,7 +113,7 @@ describe('provider.service', () => {
       ];
 
       expect(transformAWSMatchesToRectangles(image, awsMatches)).toEqual(
-        expected
+        expected,
       );
     });
   });
@@ -133,16 +134,19 @@ describe('provider.service', () => {
           h: 45,
         },
       ];
-      expect(scaleRectangles(expected, {})).toEqual(expected);
+      expect(scaleRectangles(expected, Scale.buildEmpty())).toEqual(
+        expected,
+      );
     });
 
     it('should be able to scale matches based on a given scale object', () => {
-      const scale = {
-        originalWidth: 1280,
-        originalHeight: 260,
-        width: 820,
-        height: 166.5625,
-      };
+      const scale = new Scale();
+      scale.ratio = 166.5625;
+      scale.height = 0;
+      scale.width = 1280;
+      scale.originalHeight = 260;
+      scale.originalWidth = 820;
+
       const given = [
         {
           x: 41,

@@ -1,9 +1,9 @@
-import mockedAWS from './data/aws.json';
-import mockedAzure from './data/azure.json';
-import mockedGoogle from './data/google.json';
+import mockedAWS from '../mock/data/aws.json';
+import mockedAzure from '../mock/data/azure.json';
+import mockedGoogle from '../mock/data/google.json';
 
-const fetch = (mockData, time = 0) => {
-  return new Promise(resolve => {
+const fetch = (mockData: any, time = 0) => {
+  return new Promise((resolve) => {
     setTimeout(() => {
       resolve(mockData);
     }, time);

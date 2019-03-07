@@ -1,11 +1,11 @@
-import { boundingBoxToRect, calculateScaleDimensions, getMatchFromClickOnBoundingBox } from '@/services/math.service.js';
+import { ImageWrapper } from '@/components/provider/shapes/image-wrapper';
+import { boundingBoxToRect, calculateScaleDimensions, getMatchFromClickOnBoundingBox } from '@/services/math.service.ts';
 describe('math.service.spec.js', () => {
   describe('calculateScaleDimensions', () => {
     it('should calculate scale correctly', () => {
-      const img = { width: 1280, height: 260 };
+      const img = new ImageWrapper(1280, 260);
       const newWidth = 1105;
-      const newHeight = 203;
-      const result = calculateScaleDimensions(img, newWidth, newHeight);
+      const result = calculateScaleDimensions(img, newWidth);
 
       expect(result.originalWidth).toBe(img.width);
       expect(result.originalHeight).toBe(img.height);
@@ -27,7 +27,7 @@ describe('math.service.spec.js', () => {
         clickY = 222;
 
       expect(
-        getMatchFromClickOnBoundingBox(clickX, clickY, [match])
+        getMatchFromClickOnBoundingBox(clickX, clickY, [match]),
       ).toBeUndefined();
     });
 
@@ -42,7 +42,7 @@ describe('math.service.spec.js', () => {
         clickY = 40;
 
       expect(getMatchFromClickOnBoundingBox(clickX, clickY, [match])).toEqual(
-        match
+        match,
       );
     });
   });
@@ -64,7 +64,7 @@ describe('math.service.spec.js', () => {
       };
 
       expect(boundingBoxToRect({ width: 608, height: 588 }, bBox)).toEqual(
-        expected
+        expected,
       );
     });
   });
